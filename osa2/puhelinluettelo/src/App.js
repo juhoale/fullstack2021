@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react'
-import axios from 'axios'
+import personService from './services/persons'
 
-const Contacts = ({ persons, personsFiltered, filter }) => {
+const Contacts = ({persons, personsFiltered, filter, handleDelete}) => {
   if(filter === '') {
     return (
-      <div>
+    <div>
       <h2>Numbers</h2>
       {persons.map((person) =>
-        <Contact key={person.name} person={person} />)}
+        <Contact key={person.name} person={person} handleDelete={handleDelete}/>)}
     </div>  
     )
   } else
@@ -15,14 +15,16 @@ const Contacts = ({ persons, personsFiltered, filter }) => {
     <div>
       <h2>Numbers</h2>
       {personsFiltered.map((person) =>
-        <Contact key={person.name} person={person} />)}
+        <Contact key={person.name} person={person} handleDelete={handleDelete} />)}
     </div> 
   )
 }
 
-const Contact = ({ person }) => {
+const Contact = ({person, handleDelete}) => {
   return (
-    <p>{person.name} {person.number}</p>
+    <div>
+      <p>{person.name} {person.number} <button onClick={() => handleDelete(person)}>Delete</button></p>
+    </div>
   )
 }
 
@@ -52,46 +54,116 @@ const AddForm = (props) => {
   )
 }
 
+const Notification = ({message}) => {
+  if(message === null) {
+    return null
+  }
+
+  return (
+    <div className="success">
+      {message}
+    </div>
+    )
+}
+
+const Error = ({message}) => {
+  if(message === null) {
+    return null
+  }
+
+  return (
+    <div className="error">
+      {message}
+    </div>
+    )
+}
+
 const App = () => {
-  const [ persons, setPersons] = useState([]) 
+  const [persons, setPersons] = useState([]) 
   const [copy, setCopy] = useState([])
   const [newName, setNewName] = useState('')
   const [newNumber, setNewNumber] = useState('')
   const [filter, setFilter] = useState('')
+  const [successMessage, setSuccessMessage] = useState(null)
+  const [errorMessage, setErrorMessage] = useState(null)
 
   useEffect(() => {
-    const eventHandler = response => {
-      setPersons(response.data)
-    }
-    const promise = axios.get('http://localhost:3001/persons')
-    promise.then(eventHandler)
+    getPersons()
   }, [])
 
-  function nameExist() {
-    return persons.some(person => {
+  const getPersons = () => {
+    personService
+      .getAll()
+      .then(initialPersons => {
+        setPersons(initialPersons)
+      })
+  }
+
+  const nameExist = () => {
+    return persons.find(person => {
       return person.name.toLowerCase() === newName.toLowerCase()
     })
   }
 
-  function filterNames(arr, query) {
+  const filterNames = (arr, query) => {
     return arr.filter(contact => {
       return contact.name.toLowerCase().includes(query.toLowerCase())
     })
   }
 
+  const showMessage = (message) => {
+    setSuccessMessage(message)
+      setTimeout(()=> {
+      setSuccessMessage(null)
+    }, 3000)
+  }
+
   const addName = (event) => {
     event.preventDefault()
-    if(nameExist()) {
-      window.alert(`${newName} is already added to phonebook`)
-    } else {
     const personObject = {
       name: newName,
       number: newNumber
+    } 
+    const check = nameExist()
+    if(check !== undefined) {
+      const confirmation = window.confirm(`${newName} is already added to phonebook, replace the old number with a new one?`)
+      if(confirmation){
+        personService
+          .modify(check.id, personObject)
+          .then(data => {
+            showMessage(`Changed number of ${data.name}`)
+            getPersons()
+          })
+          .catch(error => {
+            setErrorMessage(`Information of ${personObject.name} has already been removed from the server`)
+            setTimeout(()=> {
+              setErrorMessage(null)
+            }, 5000)
+            getPersons()
+          })
+      }
+    } else {  
+    personService
+      .create(personObject)
+      .then(returnedPerson => {
+        setPersons(persons.concat(returnedPerson))
+        setCopy(persons)
+        setNewName('')
+        setNewNumber('')
+        showMessage(`Added ${returnedPerson.name}`)
+      })    
     }
-    setPersons(persons.concat(personObject))
-    setCopy(persons)
-    setNewName('')
-    setNewNumber('')
+  }
+
+  const handleDelete = (person) => {
+    const confirmation = window.confirm(`Are you  sure you want to delete ${person.name}`)
+    if(confirmation){
+      personService
+      .remove(person.id)
+      .then(response => {
+        showMessage(`Deleted ${person.name}`)  
+        getPersons()   
+      })
     }
   }
 
@@ -112,6 +184,8 @@ const App = () => {
   return (
     <div>
       <h2>Phonebook</h2>
+      <Notification message={successMessage} />
+      <Error message={errorMessage} />
       <Filter filter={filter} handleFilter={handleFilter}/>
       <AddForm 
       addName={addName} 
@@ -124,6 +198,7 @@ const App = () => {
       persons={persons} 
       personsFiltered={copy} 
       filter={filter}
+      handleDelete={handleDelete}
       />
     </div>
   )
