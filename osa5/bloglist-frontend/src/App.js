@@ -51,6 +51,7 @@ const App = () => {
       blogObject.likes += 1
       const likedBlog = await blogService.update(blogObject)
       setBlogs(blogs.map(blog => blog.id !== likedBlog.id ? blog : likedBlog))
+      setBlogs(blogs.sort((a,b) => {return b.likes - a.likes}))
     } catch (exception) {
       showNotification('Something went wrong')
     }
@@ -108,6 +109,7 @@ const App = () => {
           <div>
             username
             <input
+              id="username"
               type="text"
               value={username}
               name="Username"
@@ -117,13 +119,14 @@ const App = () => {
           <div>
             password
             <input
+              id="password"
               type="password"
               value={password}
               name="Password"
               onChange={({ target }) => setPassword(target.value)}
             />
           </div>
-          <button type="submit">Login</button>
+          <button type="submit" id="loginBtn">Login</button>
         </form>
       </div>
     )
@@ -139,9 +142,11 @@ const App = () => {
       <Togglable buttonLabel='Create new blog' ref={createFormRef}>
         <CreateForm handleBlogAdd={addBlog}/>
       </Togglable>
-      {blogs.map(blog =>
-        <Blog key={blog.id} blog={blog} handleBlogLike={likeBlog} user={user} handleDelete={deleteBlog} />
-      )}
+      <div id="blogs">
+        {blogs.map(blog =>
+          <Blog key={blog.id} blog={blog} handleBlogLike={likeBlog} user={user} handleDelete={deleteBlog} />
+        )}
+      </div>
     </div>
   )
 }

@@ -4,7 +4,7 @@ const Blog = ({ blog, handleBlogLike, user, handleDelete }) => {
 
   if(expanded) {
     return (
-      <div className="blog">
+      <div className="blog" id="blog">
         Title: {blog.title} <button onClick={() => setExpanded(!expanded)}>view</button> <br />
         Author: {blog.author} <br />
         Url: {blog.url} <br />
